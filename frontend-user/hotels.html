@@ -48,19 +48,18 @@
 
 <script src="js/common.js"></script>
 <script>
-let currentPage = 1, totalRecords = 0;
-
-async function loadHotels(page) {
-    currentPage = page;
-    const keyword = document.getElementById('keyword').value.trim();
-    const orderBy = document.getElementById('orderBy').value;
-    const data = await api('/api/hotel/list?page=' + page + '&size=9&keyword=' + encodeURIComponent(keyword) + '&orderBy=' + orderBy);
-    const el = document.getElementById('hotelList');
-    if (!data) { el.innerHTML = '<div class="empty"><i class="fas fa-hotel"></i><p>暂无数据</p></div>'; return; }
-    const list = data.records || data.list || data;
-    totalRecords = data.total || list.length;
-    if (!list.length) { el.innerHTML = '<div class="empty"><i class="fas fa-hotel"></i><p>暂无数据</p></div>'; document.getElementById('pagination').innerHTML = ''; return; }
-    el.innerHTML = list.map(h => {
+const hotelList = createPagedList({
+    listId: 'hotelList',
+    paginationId: 'pagination',
+    pageSize: 9,
+    icon: 'fa-hotel',
+    emptyText: '暂无数据',
+    fetchPage: page => {
+        const keyword = document.getElementById('keyword').value.trim();
+        const orderBy = document.getElementById('orderBy').value;
+        return api('/api/hotel/list?page=' + page + '&size=9&keyword=' + encodeURIComponent(keyword) + '&orderBy=' + orderBy);
+    },
+    renderItem: h => {
         let tags = '';
         if (h.hasBreakfast || h.has_breakfast) tags += '<span class="tag tag-gold">含早餐</span>';
         if (h.hasRoomService || h.has_room_service) tags += '<span class="tag tag-red">客房服务</span>';
@@ -76,9 +75,9 @@ async function loadHotels(page) {
                 '</div>' +
             '</div>' +
         '</a>';
-    }).join('');
-    renderPagination(document.getElementById('pagination'), currentPage, totalRecords, 9, 'loadHotels');
-}
+    }
+});
+function loadHotels(page) { hotelList.load(page); }
 
 loadHotels(1);
 </script>

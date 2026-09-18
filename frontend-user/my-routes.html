@@ -144,7 +144,7 @@ async function loadRoutes() {
                 <div class="route-card-meta">
                     <span><i class="fas fa-calendar-day"></i> ${r.days}天</span>
                     <span><i class="fas fa-map-marker-alt"></i> ${spots.length}个景点</span>
-                    <span><i class="fas fa-clock"></i> ${fmtDate(r.createTime)}</span>
+                    <span><i class="fas fa-clock"></i> ${formatDate(r.createTime)}</span>
                 </div>
                 ${r.description ? `<div class="route-card-desc">${r.description}</div>` : ''}
                 <div style="margin-bottom:12px">${spots.slice(0,5).map(s=>`<span class="spot-tag">${s.spotName||s.name||'景点'}</span>`).join('')}
@@ -256,7 +256,6 @@ async function submitForReview(id) {
 }
 
 function safeJson(s, def) { try { return JSON.parse(s || '[]'); } catch(e) { return def; } }
-function fmtDate(d) { if (!d) return '--'; return new Date(d).toLocaleDateString('zh-CN'); }
 function esc(s) { return (s||'').replace(/'/g,"\\'"); }
 function loadSidebar() {
     const u = getUser();

@@ -198,8 +198,9 @@ async function loadStore(storeId) {
 
 async function loadRelated(category) {
     var data = await api('/api/food/list?page=1&size=6&category=' + encodeURIComponent(category));
-    if (!data) return;
-    var list = (data.records || data.list || data).filter(function(f){ return f.id != foodId; }).slice(0, 4);
+    var parsed = parseListData(data);
+    if (!parsed) return;
+    var list = parsed.list.filter(function(f){ return f.id != foodId; }).slice(0, 4);
     if (!list.length) return;
     document.getElementById('relatedSection').style.display = 'block';
     document.getElementById('relatedList').innerHTML = list.map(function(f) {

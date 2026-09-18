@@ -173,6 +173,67 @@ function formatDate(d) {
     return typeof d === 'string' ? d.substring(0, 16) : '';
 }
 
+/* ========== 分页列表（各列表页共用） ========== */
+/**
+ * 统一解析列表接口返回结构：{records,total} / {list,total} / 数组。
+ * 成功返回 { list, total }；请求失败或返回为空时返回 null。
+ */
+function parseListData(data) {
+    if (!data || data === true) return null;
+    const list = data.records || data.list || (Array.isArray(data) ? data : []);
+    return { list: list, total: data.total || list.length };
+}
+
+/** 列表加载中占位 */
+function listLoadingHtml() {
+    return '<div class="loading"><div class="spinner"></div><p>加载中...</p></div>';
+}
+
+/** 列表空态占位 */
+function listEmptyHtml(icon, text) {
+    return '<div class="empty"><i class="fas ' + icon + '"></i><p>' + text + '</p></div>';
+}
+
+/**
+ * 分页列表控制器：集中处理加载中、加载失败重试、空态提示与翻页渲染，
+ * 各列表页只需提供数据来源 fetchPage(page) 与列表项渲染 renderItem(item)。
+ * cfg: { listId, paginationId, pageSize, icon, emptyText, fetchPage, renderItem }
+ */
+let __pagedListSeq = 0;
+function createPagedList(cfg) {
+    const listEl = document.getElementById(cfg.listId);
+    const pageEl = cfg.paginationId ? document.getElementById(cfg.paginationId) : null;
+    const icon = cfg.icon || 'fa-inbox';
+    let currentPage = 1;
+    // 翻页与重试通过内联 onclick 触发，回调需暴露在全局
+    const goName = '__pagedListGo' + (++__pagedListSeq);
+    window[goName] = function (p) { load(p); };
+
+    async function load(page) {
+        currentPage = page;
+        listEl.innerHTML = listLoadingHtml();
+        let parsed = null;
+        try {
+            parsed = parseListData(await cfg.fetchPage(page));
+        } catch (e) { parsed = null; }
+        if (!parsed) {
+            listEl.innerHTML = '<div class="empty" style="cursor:pointer" title="点击重新加载" onclick="' + goName + '(' + page + ')">' +
+                '<i class="fas ' + icon + '"></i><p>加载失败，请重试</p></div>';
+            if (pageEl) pageEl.innerHTML = '';
+            return;
+        }
+        if (!parsed.list.length) {
+            listEl.innerHTML = listEmptyHtml(icon, cfg.emptyText || t('noData'));
+            if (pageEl) pageEl.innerHTML = '';
+            return;
+        }
+        listEl.innerHTML = parsed.list.map(cfg.renderItem).join('');
+        if (pageEl) renderPagination(pageEl, currentPage, parsed.total, cfg.pageSize, goName);
+    }
+
+    return { load: load, getPage: function () { return currentPage; } };
+}
+
 /* ========== Header Render ========== */
 function renderHeader() {
     const user = getUser();

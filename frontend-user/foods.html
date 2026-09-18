@@ -51,8 +51,6 @@
 
 <script src="js/common.js"></script>
 <script>
-let currentPage = 1, totalRecords = 0;
-
 async function loadCategories() {
     const data = await api('/api/food/categories');
     if (!data) return;
@@ -65,18 +63,19 @@ async function loadCategories() {
     });
 }
 
-async function loadFoods(page) {
-    currentPage = page;
-    const category = document.getElementById('category').value;
-    const keyword = document.getElementById('keyword').value.trim();
-    const orderBy = document.getElementById('orderBy').value;
-    const data = await api('/api/food/list?page=' + page + '&size=9&category=' + encodeURIComponent(category) + '&keyword=' + encodeURIComponent(keyword) + '&orderBy=' + orderBy);
-    const el = document.getElementById('foodList');
-    if (!data) { el.innerHTML = '<div class="empty"><i class="fas fa-utensils"></i><p>暂无数据</p></div>'; return; }
-    const list = data.records || data.list || data;
-    totalRecords = data.total || list.length;
-    if (!list.length) { el.innerHTML = '<div class="empty"><i class="fas fa-utensils"></i><p>暂无数据</p></div>'; document.getElementById('pagination').innerHTML = ''; return; }
-    el.innerHTML = list.map(f =>
+const foodList = createPagedList({
+    listId: 'foodList',
+    paginationId: 'pagination',
+    pageSize: 9,
+    icon: 'fa-utensils',
+    emptyText: '暂无数据',
+    fetchPage: page => {
+        const category = document.getElementById('category').value;
+        const keyword = document.getElementById('keyword').value.trim();
+        const orderBy = document.getElementById('orderBy').value;
+        return api('/api/food/list?page=' + page + '&size=9&category=' + encodeURIComponent(category) + '&keyword=' + encodeURIComponent(keyword) + '&orderBy=' + orderBy);
+    },
+    renderItem: f =>
         '<a class="card" href="food-detail.html?id=' + f.id + '">' +
             '<div class="card-img">' +
                 '<img src="' + API + (f.coverImage || '') + '" onerror="imgError(this)" alt="">' +
@@ -90,9 +89,8 @@ async function loadFoods(page) {
                 '</div>' +
             '</div>' +
         '</a>'
-    ).join('');
-    renderPagination(document.getElementById('pagination'), currentPage, totalRecords, 9, 'loadFoods');
-}
+});
+function loadFoods(page) { foodList.load(page); }
 
 loadCategories();
 loadFoods(1);

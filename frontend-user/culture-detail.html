@@ -228,9 +228,10 @@ function sharePage() {
 async function loadRelated() {
     const res = await api(`/api/culture/list?page=1&size=5&categoryId=`);
     const container = document.getElementById('relatedList');
-    if (!res) { container.innerHTML = '<div class="empty"><p>暂无推荐</p></div>'; return; }
+    const parsed = parseListData(res);
+    if (!parsed) { container.innerHTML = '<div class="empty"><p>暂无推荐</p></div>'; return; }
 
-    const list = (res.records || res.list || res).filter(c => c.id != cultureId).slice(0, 5);
+    const list = parsed.list.filter(c => c.id != cultureId).slice(0, 5);
     if (list.length === 0) { container.innerHTML = '<div class="empty"><p>暂无推荐</p></div>'; return; }
 
     container.innerHTML = list.map(c => `

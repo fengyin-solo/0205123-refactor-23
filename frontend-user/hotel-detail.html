@@ -151,7 +151,7 @@
 <script src="js/common.js"></script>
 <script>
 const hotelId = getParam('id');
-let hotel = null, commentPage = 1, selectedRating = 5;
+let hotel = null, selectedRating = 5;
 
 async function loadDetail() {
     hotel = await api('/api/hotel/detail?id=' + hotelId);
@@ -249,15 +249,14 @@ async function confirmPay() {
     }
 }
 
-async function loadComments(page) {
-    commentPage = page;
-    const data = await api('/api/comment/list?targetType=HOTEL&targetId=' + hotelId + '&page=' + page + '&size=10');
-    const el = document.getElementById('commentList');
-    if (!data) { el.innerHTML = '<div class="empty"><i class="fas fa-comment-slash"></i><p>暂无评价</p></div>'; return; }
-    const list = data.records || data.list || data;
-    const total = data.total || list.length;
-    if (!list.length) { el.innerHTML = '<div class="empty"><i class="fas fa-comment-slash"></i><p>暂无评价</p></div>'; document.getElementById('commentPagination').innerHTML = ''; return; }
-    el.innerHTML = list.map(c =>
+const commentList = createPagedList({
+    listId: 'commentList',
+    paginationId: 'commentPagination',
+    pageSize: 10,
+    icon: 'fa-comment-slash',
+    emptyText: '暂无评价',
+    fetchPage: page => api('/api/comment/list?targetType=HOTEL&targetId=' + hotelId + '&page=' + page + '&size=10'),
+    renderItem: c =>
         '<div class="comment-item">' +
             '<div class="comment-avatar">' + (c.userAvatar ? ('<img src="' + API + c.userAvatar + '" alt="avatar">') : ((c.nickname || c.username || '?').charAt(0).toUpperCase())) + '</div>' +
             '<div class="comment-body">' +
@@ -268,9 +267,8 @@ async function loadComments(page) {
                 (c.reply ? '<div class="comment-reply"><strong>商家回复：</strong>' + c.reply + '</div>' : '') +
             '</div>' +
         '</div>'
-    ).join('');
-    renderPagination(document.getElementById('commentPagination'), commentPage, total, 10, 'loadComments');
-}
+});
+function loadComments(page) { commentList.load(page); }
 
 async function submitComment() {
     if (!getUser()) { showToast('请先登录', 'error'); return; }
