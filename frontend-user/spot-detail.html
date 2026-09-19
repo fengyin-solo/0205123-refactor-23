@@ -275,6 +275,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="js/common.js"></script>
+<script src="js/list-view.js"></script>
 <script>
 const spotId = getParam('id');
 let isFavorited = false;
@@ -473,22 +474,8 @@ async function loadRelated() {
     `).join('');
 }
 
-async function loadComments(page) {
-    commentPage = page;
-    const res = await api(`/api/comment/list?targetType=SPOT&targetId=${spotId}&page=${page}&size=10`);
-    const container = document.getElementById('commentList');
-    if (!res) { container.innerHTML = '<div class="empty"><p>加载评论失败</p></div>'; return; }
-
-    const list = res.records || res.list || res;
-    const total = res.total || (Array.isArray(res) ? res.length : 0);
-
-    if (!list || list.length === 0) {
-        container.innerHTML = '<div class="empty"><i class="fas fa-comment-slash"></i><p>暂无评论，来做第一个评价的人吧</p></div>';
-        document.getElementById('commentPagination').innerHTML = '';
-        return;
-    }
-
-    container.innerHTML = list.map(c => `
+function commentItem(c) {
+    return `
         <div class="comment-item">
             <div class="comment-avatar">${c.userAvatar ? `<img src="${API + c.userAvatar}" alt="avatar">` : (c.nickname || c.username || '游').charAt(0)}</div>
             <div class="comment-body">
@@ -499,10 +486,19 @@ async function loadComments(page) {
                 ${c.reply ? `<div class="comment-reply"><strong>商家回复：</strong>${c.reply}</div>` : ''}
             </div>
         </div>
-    `).join('');
-
-    renderPagination(document.getElementById('commentPagination'), commentPage, total, 10, 'loadComments');
+    `;
 }
+
+const commentListView = createListView({
+    container: '#commentList',
+    pagination: '#commentPagination',
+    pageSize: 10,
+    emptyIcon: 'fa-comment-slash',
+    emptyText: '暂无评论，来做第一个评价的人吧',
+    fetch: (page) => api(`/api/comment/list?targetType=SPOT&targetId=${spotId}&page=${page}&size=10`),
+    renderItem: commentItem
+});
+function loadComments(page) { commentListView.load(page); }
 
 function selectStar(v) {
     selectedRating = v;

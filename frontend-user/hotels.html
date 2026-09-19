@@ -47,38 +47,40 @@
 <footer class="footer"><div class="container"><p>© 2026 贵州红色文化旅游景点信息管理系统</p></div></footer>
 
 <script src="js/common.js"></script>
+<script src="js/list-view.js"></script>
 <script>
-let currentPage = 1, totalRecords = 0;
-
-async function loadHotels(page) {
-    currentPage = page;
-    const keyword = document.getElementById('keyword').value.trim();
-    const orderBy = document.getElementById('orderBy').value;
-    const data = await api('/api/hotel/list?page=' + page + '&size=9&keyword=' + encodeURIComponent(keyword) + '&orderBy=' + orderBy);
-    const el = document.getElementById('hotelList');
-    if (!data) { el.innerHTML = '<div class="empty"><i class="fas fa-hotel"></i><p>暂无数据</p></div>'; return; }
-    const list = data.records || data.list || data;
-    totalRecords = data.total || list.length;
-    if (!list.length) { el.innerHTML = '<div class="empty"><i class="fas fa-hotel"></i><p>暂无数据</p></div>'; document.getElementById('pagination').innerHTML = ''; return; }
-    el.innerHTML = list.map(h => {
-        let tags = '';
-        if (h.hasBreakfast || h.has_breakfast) tags += '<span class="tag tag-gold">含早餐</span>';
-        if (h.hasRoomService || h.has_room_service) tags += '<span class="tag tag-red">客房服务</span>';
-        return '<a class="card" href="hotel-detail.html?id=' + h.id + '">' +
-            '<div class="card-img"><img src="' + API + (h.coverImage || '') + '" onerror="imgError(this)" alt=""></div>' +
-            '<div class="card-body">' +
-                '<h3>' + (h.name || '') + '</h3>' +
-                '<p><i class="fas fa-map-marker-alt"></i> ' + (h.location || h.address || '') + '</p>' +
-                '<div style="margin:6px 0">' + tags + '</div>' +
-                '<div class="card-meta">' +
-                    '<span class="card-price">¥' + (h.price || 0) + '<small>/晚</small></span>' +
-                    '<span class="card-rating">' + renderStars(h.rating || 0) + '</span>' +
-                '</div>' +
+function hotelCard(h) {
+    let tags = '';
+    if (h.hasBreakfast || h.has_breakfast) tags += '<span class="tag tag-gold">含早餐</span>';
+    if (h.hasRoomService || h.has_room_service) tags += '<span class="tag tag-red">客房服务</span>';
+    return '<a class="card" href="hotel-detail.html?id=' + h.id + '">' +
+        '<div class="card-img"><img src="' + API + (h.coverImage || '') + '" onerror="imgError(this)" alt=""></div>' +
+        '<div class="card-body">' +
+            '<h3>' + (h.name || '') + '</h3>' +
+            '<p><i class="fas fa-map-marker-alt"></i> ' + (h.location || h.address || '') + '</p>' +
+            '<div style="margin:6px 0">' + tags + '</div>' +
+            '<div class="card-meta">' +
+                '<span class="card-price">¥' + (h.price || 0) + '<small>/晚</small></span>' +
+                '<span class="card-rating">' + renderStars(h.rating || 0) + '</span>' +
             '</div>' +
-        '</a>';
-    }).join('');
-    renderPagination(document.getElementById('pagination'), currentPage, totalRecords, 9, 'loadHotels');
+        '</div>' +
+    '</a>';
 }
+
+const hotelListView = createListView({
+    container: '#hotelList',
+    pagination: '#pagination',
+    pageSize: 9,
+    emptyIcon: 'fa-hotel',
+    emptyText: '暂无数据',
+    fetch: (page) => {
+        const keyword = document.getElementById('keyword').value.trim();
+        const orderBy = document.getElementById('orderBy').value;
+        return api('/api/hotel/list?page=' + page + '&size=9&keyword=' + encodeURIComponent(keyword) + '&orderBy=' + orderBy);
+    },
+    renderItem: hotelCard
+});
+function loadHotels(page) { hotelListView.load(page); }
 
 loadHotels(1);
 </script>

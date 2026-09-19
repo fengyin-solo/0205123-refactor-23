@@ -225,6 +225,9 @@ img{max-width:100%;display:block}
 .empty{text-align:center;padding:60px 20px;color:var(--text2)}
 .empty i{font-size:48px;margin-bottom:16px;color:#ddd}
 .empty p{font-size:16px}
+.list-error i{color:#ffa39e}
+.list-retry-btn{display:inline-block;margin-top:14px;padding:7px 20px;border-radius:var(--r);border:1px solid var(--red);color:var(--red);font-size:13px;cursor:pointer;transition:all .2s;background:#fff}
+.list-retry-btn:hover{background:var(--red);color:#fff}
 .empty-illus{display:flex;flex-direction:column;align-items:center;padding:56px 20px;color:var(--text2)}
 .empty-illus svg{margin-bottom:20px;opacity:.35}
 .empty-illus p{font-size:15px;margin-bottom:4px;font-weight:500;color:var(--text2)}

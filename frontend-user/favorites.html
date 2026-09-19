@@ -61,6 +61,7 @@
 <footer class="footer"><div class="container"><p>© 2026 贵州红色文化旅游景点信息管理系统</p></div></footer>
 
 <script src="js/common.js"></script>
+<script src="js/list-view.js"></script>
 <script>
 if (!requireLogin()) throw new Error('need login');
 
@@ -98,7 +99,6 @@ function getDetailPage(type) {
 }
 
 function emptyFav() {
-    const icons = { SPOT: 'fa-mountain', ROUTE: 'fa-route', CULTURE: 'fa-book-open' };
     const labels = { SPOT: '景点', ROUTE: '线路', CULTURE: '红色文化' };
     return '<div class="empty-illus">' +
         '<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">' +
@@ -110,47 +110,49 @@ function emptyFav() {
     '</div>';
 }
 
-async function loadFavorites() {
-    const el = document.getElementById('favList');
-    el.innerHTML = '<div style="padding:40px 0;text-align:center"><div class="spinner" style="margin:0 auto 12px"></div><p style="color:var(--text3);font-size:14px">加载中...</p></div>';
-    const favs = await api('/api/favorite/myList?targetType=' + currentType);
-    if (!favs || favs === true || !favs.length) { el.innerHTML = emptyFav(); return; }
-
-    const details = await Promise.all(favs.map(async fav => {
-        const detail = await api(getDetailApi(currentType) + (fav.targetId || fav.id));
-        return { fav, detail };
-    }));
-    const valid = details.filter(d => d.detail);
-    if (!valid.length) { el.innerHTML = emptyFav(); return; }
-
-    el.innerHTML = valid.map(d => {
-        const item = d.detail;
-        const fav = d.fav;
-        const imgSrc = item.coverImage ? (API + item.coverImage) : '';
-        const name = item.name || item.title || '';
-        const desc = item.description || item.intro || item.content || '';
-        const location = item.location || item.region || '';
-        const theme = item.theme || item.category || '';
-        const price = item.ticketPrice !== undefined ? (item.ticketPrice > 0 ? '¥' + item.ticketPrice : '免费') : (item.budget ? '预算 ¥' + item.budget : '');
-        return '<div class="fav-item">' +
-            '<div class="fav-item-img">' + (imgSrc ? '<img src="' + imgSrc + '" onerror="imgError(this)" alt="' + name + '">' : '') + '</div>' +
-            '<div class="fav-item-body">' +
-                '<div>' +
-                    '<div class="fav-item-title"><a href="' + getDetailPage(currentType) + item.id + '">' + name + '</a></div>' +
-                    '<div class="fav-item-desc">' + desc + '</div>' +
-                '</div>' +
-                '<div class="fav-item-footer">' +
-                    '<div class="fav-item-meta">' +
-                        (location ? '<span><i class="fas fa-map-marker-alt"></i> ' + location + '</span>' : '') +
-                        (theme ? '<span><i class="fas fa-tag"></i> ' + theme + '</span>' : '') +
-                        (price ? '<span style="color:var(--red);font-weight:600">' + price + '</span>' : '') +
-                    '</div>' +
-                    '<button class="btn btn-outline btn-sm" onclick="removeFav(' + (fav.targetId || fav.id) + ',\'' + currentType + '\')"><i class="fas fa-heart-broken"></i> 取消收藏</button>' +
-                '</div>' +
+function favoriteItem(d) {
+    const item = d.detail;
+    const fav = d.fav;
+    const imgSrc = item.coverImage ? (API + item.coverImage) : '';
+    const name = item.name || item.title || '';
+    const desc = item.description || item.intro || item.content || '';
+    const location = item.location || item.region || '';
+    const theme = item.theme || item.category || '';
+    const price = item.ticketPrice !== undefined ? (item.ticketPrice > 0 ? '¥' + item.ticketPrice : '免费') : (item.budget ? '预算 ¥' + item.budget : '');
+    return '<div class="fav-item">' +
+        '<div class="fav-item-img">' + (imgSrc ? '<img src="' + imgSrc + '" onerror="imgError(this)" alt="' + name + '">' : '') + '</div>' +
+        '<div class="fav-item-body">' +
+            '<div>' +
+                '<div class="fav-item-title"><a href="' + getDetailPage(currentType) + item.id + '">' + name + '</a></div>' +
+                '<div class="fav-item-desc">' + desc + '</div>' +
             '</div>' +
-        '</div>';
-    }).join('');
+            '<div class="fav-item-footer">' +
+                '<div class="fav-item-meta">' +
+                    (location ? '<span><i class="fas fa-map-marker-alt"></i> ' + location + '</span>' : '') +
+                    (theme ? '<span><i class="fas fa-tag"></i> ' + theme + '</span>' : '') +
+                    (price ? '<span style="color:var(--red);font-weight:600">' + price + '</span>' : '') +
+                '</div>' +
+                '<button class="btn btn-outline btn-sm" onclick="removeFav(' + (fav.targetId || fav.id) + ',\'' + currentType + '\')"><i class="fas fa-heart-broken"></i> 取消收藏</button>' +
+            '</div>' +
+        '</div>' +
+    '</div>';
 }
+
+const favListView = createListView({
+    container: '#favList',
+    emptyHtml: emptyFav,
+    fetch: async () => {
+        const favs = await api('/api/favorite/myList?targetType=' + currentType);
+        if (!favs || favs === true || !favs.length) return [];
+        const details = await Promise.all(favs.map(async fav => {
+            const detail = await api(getDetailApi(currentType) + (fav.targetId || fav.id));
+            return { fav, detail };
+        }));
+        return details.filter(d => d.detail);
+    },
+    renderItem: favoriteItem
+});
+function loadFavorites() { favListView.load(1); }
 
 async function removeFav(id, type) {
     const data = await api('/api/favorite/remove?targetType=' + type + '&targetId=' + id);

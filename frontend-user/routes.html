@@ -48,9 +48,7 @@
             </div>
         </div>
 
-        <div id="routeGrid" class="card-grid">
-            <div class="loading"><div class="spinner"></div><p>加载中...</p></div>
-        </div>
+        <div id="routeGrid" class="card-grid"></div>
 
         <div id="pagination" class="pagination"></div>
     </div>
@@ -59,9 +57,8 @@
 <footer class="footer"><div class="container"><p>© 2026 贵州红色文化旅游景点信息管理系统</p></div></footer>
 
 <script src="js/common.js"></script>
+<script src="js/list-view.js"></script>
 <script>
-let currentPage = 1;
-
 async function initFilters() {
     const themes = await api('/api/route/themes');
     const themeSel = document.getElementById('filterTheme');
@@ -72,28 +69,8 @@ async function initFilters() {
     });
 }
 
-async function loadRoutes(page) {
-    currentPage = page;
-    const days = document.getElementById('filterDays').value;
-    const theme = document.getElementById('filterTheme').value;
-    const keyword = document.getElementById('filterKeyword').value;
-
-    const grid = document.getElementById('routeGrid');
-    grid.innerHTML = '<div class="loading"><div class="spinner"></div><p>加载中...</p></div>';
-
-    const res = await api(`/api/route/list?page=${page}&size=9&days=${encodeURIComponent(days)}&theme=${encodeURIComponent(theme)}&keyword=${encodeURIComponent(keyword)}`);
-    if (!res) { grid.innerHTML = '<div class="empty"><i class="fas fa-route"></i><p>加载失败，请重试</p></div>'; return; }
-
-    const list = res.records || res.list || res;
-    const total = res.total || (Array.isArray(res) ? res.length : 0);
-
-    if (!list || list.length === 0) {
-        grid.innerHTML = '<div class="empty"><i class="fas fa-route"></i><p>暂无线路数据</p></div>';
-        document.getElementById('pagination').innerHTML = '';
-        return;
-    }
-
-    grid.innerHTML = list.map(r => `
+function routeCard(r) {
+    return `
         <div class="card" onclick="location.href='route-detail.html?id=${r.id}'">
             <div class="card-img">
                 ${r.coverImage ? `<img src="${API + r.coverImage}" alt="${r.name}" onerror="imgError(this)">` : ''}
@@ -111,10 +88,24 @@ async function loadRoutes(page) {
                 </div>
             </div>
         </div>
-    `).join('');
-
-    renderPagination(document.getElementById('pagination'), currentPage, total, 9, 'loadRoutes');
+    `;
 }
+
+const routeListView = createListView({
+    container: '#routeGrid',
+    pagination: '#pagination',
+    pageSize: 9,
+    emptyIcon: 'fa-route',
+    emptyText: '暂无线路数据',
+    fetch: (page) => {
+        const days = document.getElementById('filterDays').value;
+        const theme = document.getElementById('filterTheme').value;
+        const keyword = document.getElementById('filterKeyword').value;
+        return api(`/api/route/list?page=${page}&size=9&days=${encodeURIComponent(days)}&theme=${encodeURIComponent(theme)}&keyword=${encodeURIComponent(keyword)}`);
+    },
+    renderItem: routeCard
+});
+function loadRoutes(page) { routeListView.load(page); }
 
 document.getElementById('filterKeyword').addEventListener('keyup', e => { if (e.key === 'Enter') loadRoutes(1); });
 

@@ -50,9 +50,8 @@
 <footer class="footer"><div class="container"><p>© 2026 贵州红色文化旅游景点信息管理系统</p></div></footer>
 
 <script src="js/common.js"></script>
+<script src="js/list-view.js"></script>
 <script>
-let currentPage = 1, totalRecords = 0;
-
 async function loadCategories() {
     const data = await api('/api/food/categories');
     if (!data) return;
@@ -65,34 +64,37 @@ async function loadCategories() {
     });
 }
 
-async function loadFoods(page) {
-    currentPage = page;
-    const category = document.getElementById('category').value;
-    const keyword = document.getElementById('keyword').value.trim();
-    const orderBy = document.getElementById('orderBy').value;
-    const data = await api('/api/food/list?page=' + page + '&size=9&category=' + encodeURIComponent(category) + '&keyword=' + encodeURIComponent(keyword) + '&orderBy=' + orderBy);
-    const el = document.getElementById('foodList');
-    if (!data) { el.innerHTML = '<div class="empty"><i class="fas fa-utensils"></i><p>暂无数据</p></div>'; return; }
-    const list = data.records || data.list || data;
-    totalRecords = data.total || list.length;
-    if (!list.length) { el.innerHTML = '<div class="empty"><i class="fas fa-utensils"></i><p>暂无数据</p></div>'; document.getElementById('pagination').innerHTML = ''; return; }
-    el.innerHTML = list.map(f =>
-        '<a class="card" href="food-detail.html?id=' + f.id + '">' +
-            '<div class="card-img">' +
-                '<img src="' + API + (f.coverImage || '') + '" onerror="imgError(this)" alt="">' +
-                (f.category ? '<span class="card-tag">' + f.category + '</span>' : '') +
+function foodCard(f) {
+    return '<a class="card" href="food-detail.html?id=' + f.id + '">' +
+        '<div class="card-img">' +
+            '<img src="' + API + (f.coverImage || '') + '" onerror="imgError(this)" alt="">' +
+            (f.category ? '<span class="card-tag">' + f.category + '</span>' : '') +
+        '</div>' +
+        '<div class="card-body">' +
+            '<h3>' + (f.name || '') + '</h3>' +
+            '<p>' + (f.description || f.intro || '') + '</p>' +
+            '<div class="card-meta">' +
+                '<span class="card-price">¥' + (f.price || 0) + '</span>' +
             '</div>' +
-            '<div class="card-body">' +
-                '<h3>' + (f.name || '') + '</h3>' +
-                '<p>' + (f.description || f.intro || '') + '</p>' +
-                '<div class="card-meta">' +
-                    '<span class="card-price">¥' + (f.price || 0) + '</span>' +
-                '</div>' +
-            '</div>' +
-        '</a>'
-    ).join('');
-    renderPagination(document.getElementById('pagination'), currentPage, totalRecords, 9, 'loadFoods');
+        '</div>' +
+    '</a>';
 }
+
+const foodListView = createListView({
+    container: '#foodList',
+    pagination: '#pagination',
+    pageSize: 9,
+    emptyIcon: 'fa-utensils',
+    emptyText: '暂无数据',
+    fetch: (page) => {
+        const category = document.getElementById('category').value;
+        const keyword = document.getElementById('keyword').value.trim();
+        const orderBy = document.getElementById('orderBy').value;
+        return api('/api/food/list?page=' + page + '&size=9&category=' + encodeURIComponent(category) + '&keyword=' + encodeURIComponent(keyword) + '&orderBy=' + orderBy);
+    },
+    renderItem: foodCard
+});
+function loadFoods(page) { foodListView.load(page); }
 
 loadCategories();
 loadFoods(1);

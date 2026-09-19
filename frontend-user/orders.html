@@ -112,10 +112,11 @@
 <footer class="footer"><div class="container"><p>© 2026 贵州红色文化旅游景点信息管理系统</p></div></footer>
 
 <script src="js/common.js"></script>
+<script src="js/list-view.js"></script>
 <script>
 if (!requireLogin()) throw new Error('need login');
 
-let currentPage = 1, totalRecords = 0, currentStatus = '', payingOrderId = null, payMethod = 'WECHAT';
+let currentStatus = '', payingOrderId = null, payMethod = 'WECHAT';
 
 function renderSidebar() {
     const u = getUser();
@@ -155,6 +156,24 @@ function getOrderActions(order) {
     return html;
 }
 
+function orderCard(o) {
+    return '<div class="order-card">' +
+        '<div class="order-card-header">' +
+            '<span class="order-no"><i class="fas fa-hashtag" style="margin-right:3px"></i>' + (o.orderNo || o.id || '') + '</span>' +
+            getStatusBadge(o.status) +
+        '</div>' +
+        '<div class="order-card-body">' +
+            '<div class="order-target-name">' + getOrderTypeName(o.orderType) + (o.targetName || '订单') + '</div>' +
+            '<div class="order-meta-row">' +
+                '<div class="order-meta-item"><i class="fas fa-yen-sign"></i> <span>金额：</span><span class="order-amount">¥' + (o.amount || 0) + '</span></div>' +
+                '<div class="order-meta-item"><i class="fas fa-layer-group"></i> <span>数量：' + (o.quantity || 1) + '</span></div>' +
+                '<div class="order-meta-item"><i class="fas fa-calendar-alt"></i> <span>' + formatDate(o.createTime || o.createdAt) + '</span></div>' +
+            '</div>' +
+        '</div>' +
+        (getOrderActions(o) ? '<div class="order-card-footer">' + getOrderActions(o) + '</div>' : '') +
+    '</div>';
+}
+
 function switchStatus(status) {
     currentStatus = status;
     document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
@@ -164,33 +183,16 @@ function switchStatus(status) {
     loadOrders(1);
 }
 
-async function loadOrders(page) {
-    currentPage = page;
-    const data = await api('/api/order/myList?page=' + page + '&size=10&orderType=&status=' + currentStatus);
-    const el = document.getElementById('orderList');
-    if (!data) { el.innerHTML = '<div class="empty"><i class="fas fa-shopping-bag"></i><p>暂无订单</p></div>'; return; }
-    const list = data.records || data.list || data;
-    totalRecords = data.total || list.length;
-    if (!list.length) { el.innerHTML = '<div class="empty"><i class="fas fa-shopping-bag"></i><p>暂无订单</p></div>'; document.getElementById('pagination').innerHTML = ''; return; }
-    el.innerHTML = list.map(o =>
-        '<div class="order-card">' +
-            '<div class="order-card-header">' +
-                '<span class="order-no"><i class="fas fa-hashtag" style="margin-right:3px"></i>' + (o.orderNo || o.id || '') + '</span>' +
-                getStatusBadge(o.status) +
-            '</div>' +
-            '<div class="order-card-body">' +
-                '<div class="order-target-name">' + getOrderTypeName(o.orderType) + (o.targetName || '订单') + '</div>' +
-                '<div class="order-meta-row">' +
-                    '<div class="order-meta-item"><i class="fas fa-yen-sign"></i> <span>金额：</span><span class="order-amount">¥' + (o.amount || 0) + '</span></div>' +
-                    '<div class="order-meta-item"><i class="fas fa-layer-group"></i> <span>数量：' + (o.quantity || 1) + '</span></div>' +
-                    '<div class="order-meta-item"><i class="fas fa-calendar-alt"></i> <span>' + formatDate(o.createTime || o.createdAt) + '</span></div>' +
-                '</div>' +
-            '</div>' +
-            (getOrderActions(o) ? '<div class="order-card-footer">' + getOrderActions(o) + '</div>' : '') +
-        '</div>'
-    ).join('');
-    renderPagination(document.getElementById('pagination'), currentPage, totalRecords, 10, 'loadOrders');
-}
+const orderListView = createListView({
+    container: '#orderList',
+    pagination: '#pagination',
+    pageSize: 10,
+    emptyIcon: 'fa-shopping-bag',
+    emptyText: '暂无订单',
+    fetch: (page) => api('/api/order/myList?page=' + page + '&size=10&orderType=&status=' + currentStatus),
+    renderItem: orderCard
+});
+function loadOrders(page) { orderListView.load(page); }
 
 function selectPayMethod(method) { payMethod = method; document.querySelectorAll('.pay-opt').forEach(l => { var c = l.querySelector('input').value === method; l.style.borderColor = c ? 'var(--red)' : 'var(--border)'; l.style.background = c ? '#fff5f5' : ''; }); }
 
@@ -210,21 +212,21 @@ async function confirmPay() {
         payingOrderId = null;
         closePayModal();
         showToast('支付成功');
-        loadOrders(currentPage);
+        orderListView.reload();
     }
 }
 
 function cancelOrder(id) {
     showConfirm('确定取消该订单？取消后不可恢复。', async () => {
         const data = await api('/api/order/cancel?orderId=' + id);
-        if (data !== null) { showToast('订单已取消'); loadOrders(currentPage); }
+        if (data !== null) { showToast('订单已取消'); orderListView.reload(); }
     });
 }
 
 function refundOrder(id) {
     showConfirm('确定申请退款？退款将在3-5个工作日内到账。', async () => {
         const data = await api('/api/order/refund?orderId=' + id);
-        if (data !== null) { showToast('退款申请已提交'); loadOrders(currentPage); }
+        if (data !== null) { showToast('退款申请已提交'); orderListView.reload(); }
     });
 }
 

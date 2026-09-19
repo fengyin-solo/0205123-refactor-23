@@ -45,9 +45,7 @@
             </div>
         </div>
 
-        <div id="spotGrid" class="card-grid">
-            <div class="loading"><div class="spinner"></div><p>加载中...</p></div>
-        </div>
+        <div id="spotGrid" class="card-grid"></div>
 
         <div id="pagination" class="pagination"></div>
     </div>
@@ -56,9 +54,8 @@
 <footer class="footer"><div class="container"><p>© 2026 贵州红色文化旅游景点信息管理系统</p></div></footer>
 
 <script src="js/common.js"></script>
+<script src="js/list-view.js"></script>
 <script>
-let currentPage = 1;
-
 async function initFilters() {
     const [regions, themes] = await Promise.all([
         api('/api/spot/regions'),
@@ -78,29 +75,8 @@ async function initFilters() {
     });
 }
 
-async function loadSpots(page) {
-    currentPage = page;
-    const region = document.getElementById('filterRegion').value;
-    const theme = document.getElementById('filterTheme').value;
-    const keyword = document.getElementById('filterKeyword').value;
-    const orderBy = document.getElementById('filterOrder').value;
-
-    const grid = document.getElementById('spotGrid');
-    grid.innerHTML = '<div class="loading"><div class="spinner"></div><p>加载中...</p></div>';
-
-    const res = await api(`/api/spot/list?page=${page}&size=9&region=${encodeURIComponent(region)}&theme=${encodeURIComponent(theme)}&keyword=${encodeURIComponent(keyword)}&orderBy=${encodeURIComponent(orderBy)}`);
-    if (!res) { grid.innerHTML = '<div class="empty"><i class="fas fa-map-marker-alt"></i><p>加载失败，请重试</p></div>'; return; }
-
-    const list = res.records || res.list || res;
-    const total = res.total || (Array.isArray(res) ? res.length : 0);
-
-    if (!list || list.length === 0) {
-        grid.innerHTML = '<div class="empty"><i class="fas fa-map-marker-alt"></i><p>暂无景点数据</p></div>';
-        document.getElementById('pagination').innerHTML = '';
-        return;
-    }
-
-    grid.innerHTML = list.map(s => `
+function spotCard(s) {
+    return `
         <div class="card" onclick="location.href='spot-detail.html?id=${s.id}'">
             <div class="card-img">
                 ${s.coverImage ? `<img src="${API + s.coverImage}" alt="${s.name}" onerror="imgError(this)">` : ''}
@@ -117,10 +93,25 @@ async function loadSpots(page) {
                 <div class="card-rating" style="margin-top:6px">${renderStars(Math.round(s.avgRating || 0))}</div>
             </div>
         </div>
-    `).join('');
-
-    renderPagination(document.getElementById('pagination'), currentPage, total, 9, 'loadSpots');
+    `;
 }
+
+const spotListView = createListView({
+    container: '#spotGrid',
+    pagination: '#pagination',
+    pageSize: 9,
+    emptyIcon: 'fa-map-marker-alt',
+    emptyText: '暂无景点数据',
+    fetch: (page) => {
+        const region = document.getElementById('filterRegion').value;
+        const theme = document.getElementById('filterTheme').value;
+        const keyword = document.getElementById('filterKeyword').value;
+        const orderBy = document.getElementById('filterOrder').value;
+        return api(`/api/spot/list?page=${page}&size=9&region=${encodeURIComponent(region)}&theme=${encodeURIComponent(theme)}&keyword=${encodeURIComponent(keyword)}&orderBy=${encodeURIComponent(orderBy)}`);
+    },
+    renderItem: spotCard
+});
+function loadSpots(page) { spotListView.load(page); }
 
 document.getElementById('filterKeyword').addEventListener('keyup', e => { if (e.key === 'Enter') loadSpots(1); });
 

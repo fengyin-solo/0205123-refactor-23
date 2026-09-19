@@ -75,9 +75,7 @@
                     <i class="fas fa-plus"></i> 新建线路
                 </button>
             </div>
-            <div id="routeWrap">
-                <div class="loading"><i class="fas fa-spinner fa-spin"></i></div>
-            </div>
+            <div id="routeWrap"></div>
         </div>
     </div>
 </div>
@@ -119,6 +117,7 @@
 </div>
 
 <script src="js/common.js"></script>
+<script src="js/list-view.js"></script>
 <script>
 requireLogin();
 renderHeader();
@@ -126,43 +125,50 @@ loadSidebar();
 
 let allSpots = [], selectedSpots = [];
 
-async function loadRoutes() {
-    const data = await api('/api/customRoute/list');
-    const wrap = document.getElementById('routeWrap');
-    if (!data || !data.length) {
-        wrap.innerHTML = `<div style="text-align:center;padding:60px 20px;color:#aaa">
-            <i class="fas fa-route" style="font-size:36px;display:block;margin-bottom:12px;color:#e0e0e0"></i>
-            还没有自定义线路，快来创建第一条专属旅程吧！
-        </div>`; return;
-    }
-    wrap.innerHTML = `<div class="route-cards">${data.map(r => {
-        const spots = safeJson(r.spotData, []);
-        return `<div class="route-card">
-            <div style="background:linear-gradient(135deg,#c41a1a,#8b0000);height:5px"></div>
-            <div class="route-card-body">
-                <div class="route-card-title">${r.name}</div>
-                <div class="route-card-meta">
-                    <span><i class="fas fa-calendar-day"></i> ${r.days}天</span>
-                    <span><i class="fas fa-map-marker-alt"></i> ${spots.length}个景点</span>
-                    <span><i class="fas fa-clock"></i> ${fmtDate(r.createTime)}</span>
-                </div>
-                ${r.description ? `<div class="route-card-desc">${r.description}</div>` : ''}
-                <div style="margin-bottom:12px">${spots.slice(0,5).map(s=>`<span class="spot-tag">${s.spotName||s.name||'景点'}</span>`).join('')}
-                ${spots.length>5?`<span class="spot-tag" style="background:#f5f5f5;color:#aaa">+${spots.length-5}</span>`:''}</div>
-                ${r.status && r.status !== 'DRAFT' ? `<div style="margin-bottom:8px;font-size:12px"><span style="padding:2px 10px;border-radius:10px;font-weight:600;${r.status==='SUBMITTED'?'background:#fff7e6;color:#d48806':r.status==='APPROVED'?'background:#f6ffed;color:#52c41a':'background:#fff1f0;color:#ff4d4f'}">${{SUBMITTED:'待审核',APPROVED:'已推荐',REJECTED:'已驳回',DRAFT:'草稿'}[r.status]||r.status}</span>${r.rejectReason?` <span style="color:#ff4d4f;font-size:11px">原因：${r.rejectReason}</span>`:''}</div>` : ''}
-                <div class="route-card-actions">
-                    <button class="btn-primary" style="flex:1;padding:7px;border-radius:7px;border:none;cursor:pointer;font-size:13px" onclick="openEditor(${r.id})">
-                        <i class="fas fa-edit"></i> 编辑
-                    </button>
-                    ${!r.status || r.status === 'DRAFT' || r.status === 'REJECTED' ? `<button style="flex:1;padding:7px;border-radius:7px;border:1px solid #c41a1a;background:#fff;color:#c41a1a;cursor:pointer;font-size:13px" onclick="submitForReview(${r.id})"><i class="fas fa-paper-plane"></i> 申请推荐</button>` : ''}
-                    <button style="padding:7px 14px;border-radius:7px;border:1px solid #ffccc7;background:#fff0f0;color:#ff4d4f;cursor:pointer;font-size:13px" onclick="delRoute(${r.id})">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </div>
-        </div>`;
-    }).join('')}</div>`;
+function emptyRoute() {
+    return '<div style="text-align:center;padding:60px 20px;color:#aaa">' +
+        '<i class="fas fa-route" style="font-size:36px;display:block;margin-bottom:12px;color:#e0e0e0"></i>' +
+        '还没有自定义线路，快来创建第一条专属旅程吧！' +
+    '</div>';
 }
+
+function routeCard(r) {
+    const spots = safeJson(r.spotData, []);
+    return `<div class="route-card">
+        <div style="background:linear-gradient(135deg,#c41a1a,#8b0000);height:5px"></div>
+        <div class="route-card-body">
+            <div class="route-card-title">${r.name}</div>
+            <div class="route-card-meta">
+                <span><i class="fas fa-calendar-day"></i> ${r.days}天</span>
+                <span><i class="fas fa-map-marker-alt"></i> ${spots.length}个景点</span>
+                <span><i class="fas fa-clock"></i> ${formatDate(r.createTime, true) || '--'}</span>
+            </div>
+            ${r.description ? `<div class="route-card-desc">${r.description}</div>` : ''}
+            <div style="margin-bottom:12px">${spots.slice(0,5).map(s=>`<span class="spot-tag">${s.spotName||s.name||'景点'}</span>`).join('')}
+            ${spots.length>5?`<span class="spot-tag" style="background:#f5f5f5;color:#aaa">+${spots.length-5}</span>`:''}</div>
+            ${r.status && r.status !== 'DRAFT' ? `<div style="margin-bottom:8px;font-size:12px"><span style="padding:2px 10px;border-radius:10px;font-weight:600;${r.status==='SUBMITTED'?'background:#fff7e6;color:#d48806':r.status==='APPROVED'?'background:#f6ffed;color:#52c41a':'background:#fff1f0;color:#ff4d4f'}">${{SUBMITTED:'待审核',APPROVED:'已推荐',REJECTED:'已驳回',DRAFT:'草稿'}[r.status]||r.status}</span>${r.rejectReason?` <span style="color:#ff4d4f;font-size:11px">原因：${r.rejectReason}</span>`:''}</div>` : ''}
+            <div class="route-card-actions">
+                <button class="btn-primary" style="flex:1;padding:7px;border-radius:7px;border:none;cursor:pointer;font-size:13px" onclick="openEditor(${r.id})">
+                    <i class="fas fa-edit"></i> 编辑
+                </button>
+                ${!r.status || r.status === 'DRAFT' || r.status === 'REJECTED' ? `<button style="flex:1;padding:7px;border-radius:7px;border:1px solid #c41a1a;background:#fff;color:#c41a1a;cursor:pointer;font-size:13px" onclick="submitForReview(${r.id})"><i class="fas fa-paper-plane"></i> 申请推荐</button>` : ''}
+                <button style="padding:7px 14px;border-radius:7px;border:1px solid #ffccc7;background:#fff0f0;color:#ff4d4f;cursor:pointer;font-size:13px" onclick="delRoute(${r.id})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    </div>`;
+}
+
+const routeListView = createListView({
+    container: '#routeWrap',
+    emptyHtml: emptyRoute,
+    fetch: () => api('/api/customRoute/list'),
+    wrapTag: 'div',
+    wrapClass: 'route-cards',
+    renderItem: routeCard
+});
+function loadRoutes() { routeListView.load(1); }
 
 async function fetchSpots() {
     if (allSpots.length) return;
@@ -256,7 +262,6 @@ async function submitForReview(id) {
 }
 
 function safeJson(s, def) { try { return JSON.parse(s || '[]'); } catch(e) { return def; } }
-function fmtDate(d) { if (!d) return '--'; return new Date(d).toLocaleDateString('zh-CN'); }
 function esc(s) { return (s||'').replace(/'/g,"\\'"); }
 function loadSidebar() {
     const u = getUser();

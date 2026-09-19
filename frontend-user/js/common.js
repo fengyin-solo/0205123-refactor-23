@@ -148,29 +148,49 @@ function imgError(img) {
     if (img.parentElement) img.parentElement.innerHTML = '<div style="width:100%;height:100%;background:linear-gradient(135deg,#C41A1A,#8B1A1A);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.4);font-size:40px"><i class="fas fa-image"></i></div>';
 }
 
+/**
+ * 渲染分页。
+ * onClick 既可以是全局函数名字符串（保持旧用法兼容），也可以是回调函数。
+ */
 function renderPagination(container, current, total, pageSize, onClick) {
     const pages = Math.ceil(total / pageSize);
     if (pages <= 1) { container.innerHTML = ''; return; }
+    const cb = (p) => typeof onClick === 'function' ? onClick(p)
+        : new Function(onClick + '(' + p + ')')();
     let html = '';
-    if (current > 1) html += '<a onclick="' + onClick + '(' + (current - 1) + ')"><i class="fas fa-chevron-left"></i></a>';
+    if (current > 1) html += '<a data-page="' + (current - 1) + '"><i class="fas fa-chevron-left"></i></a>';
     for (let i = 1; i <= pages; i++) {
         if (i === 1 || i === pages || (i >= current - 2 && i <= current + 2)) {
-            html += current === i ? '<span class="active">' + i + '</span>' : '<a onclick="' + onClick + '(' + i + ')">' + i + '</a>';
+            html += current === i ? '<span class="active">' + i + '</span>' : '<a data-page="' + i + '">' + i + '</a>';
         } else if (i === current - 3 || i === current + 3) html += '<span class="disabled">...</span>';
     }
-    if (current < pages) html += '<a onclick="' + onClick + '(' + (current + 1) + ')"><i class="fas fa-chevron-right"></i></a>';
+    if (current < pages) html += '<a data-page="' + (current + 1) + '"><i class="fas fa-chevron-right"></i></a>';
     container.innerHTML = html;
+    container.querySelectorAll('a[data-page]').forEach(a => {
+        a.onclick = () => cb(parseInt(a.dataset.page, 10));
+    });
 }
 
-function formatDate(d) {
-    if (!d) return '';
+/**
+ * 统一时间显示。
+ * - 默认：yyyy-MM-dd HH:mm（后端返回 yyyy-MM-dd HH:mm:ss 字符串或时间戳）
+ * - dateOnly=true：只取 yyyy-MM-dd
+ * 空值返回空串。
+ */
+function formatDate(d, dateOnly) {
+    if (!d && d !== 0) return '';
+    var s;
     if (typeof d === 'number') {
         var dt = new Date(d);
         var y = dt.getFullYear(), m = ('0'+(dt.getMonth()+1)).slice(-2), day = ('0'+dt.getDate()).slice(-2);
         var h = ('0'+dt.getHours()).slice(-2), min = ('0'+dt.getMinutes()).slice(-2);
-        return y+'-'+m+'-'+day+' '+h+':'+min;
+        s = y+'-'+m+'-'+day+' '+h+':'+min;
+    } else if (typeof d === 'string') {
+        s = d.substring(0, 16);
+    } else {
+        s = '';
     }
-    return typeof d === 'string' ? d.substring(0, 16) : '';
+    return dateOnly ? s.substring(0, 10) : s;
 }
 
 /* ========== Header Render ========== */

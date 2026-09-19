@@ -58,10 +58,9 @@
 <footer class="footer"><div class="container"><p>© 2026 贵州红色文化旅游景点信息管理系统</p></div></footer>
 
 <script src="js/common.js"></script>
+<script src="js/list-view.js"></script>
 <script>
 if (!requireLogin()) throw new Error('need login');
-
-let currentPage = 1, totalRecords = 0;
 
 function renderSidebar() {
     const u = getUser();
@@ -88,41 +87,41 @@ function emptyMsg() {
     '</div>';
 }
 
-async function loadMessages(page) {
-    currentPage = page;
-    const data = await api('/api/message/list?page=' + page + '&size=10');
-    const el = document.getElementById('messageList');
-    if (!data || data === true) { el.innerHTML = emptyMsg(); return; }
-    const list = data.records || data.list || (Array.isArray(data) ? data : []);
-    totalRecords = data.total || list.length;
-    if (!list.length) { el.innerHTML = emptyMsg(); document.getElementById('pagination').innerHTML = ''; return; }
-    el.innerHTML = list.map(m => {
-        const unread = !m.isRead && !m.read;
-        const stateClass = unread ? 'unread' : 'read';
-        return '<div class="msg-item ' + stateClass + '" onclick="markRead(\'' + m.id + '\')">' +
-            '<div class="msg-item-header">' +
-                '<div class="msg-item-title">' +
-                    (unread ? '<span class="dot"></span>' : '') +
-                    '<span>' + (m.title || '系统通知') + '</span>' +
-                '</div>' +
-                '<span class="msg-item-time"><i class="fas fa-clock" style="margin-right:4px;font-size:11px"></i>' + formatDate(m.createTime || m.createdAt) + '</span>' +
+function messageItem(m) {
+    const unread = !m.isRead && !m.read;
+    const stateClass = unread ? 'unread' : 'read';
+    return '<div class="msg-item ' + stateClass + '" onclick="markRead(\'' + m.id + '\')">' +
+        '<div class="msg-item-header">' +
+            '<div class="msg-item-title">' +
+                (unread ? '<span class="dot"></span>' : '') +
+                '<span>' + (m.title || '系统通知') + '</span>' +
             '</div>' +
-            '<div class="msg-item-content">' + (m.content || '') + '</div>' +
-        '</div>';
-    }).join('');
-    renderPagination(document.getElementById('pagination'), currentPage, totalRecords, 10, 'loadMessages');
+            '<span class="msg-item-time"><i class="fas fa-clock" style="margin-right:4px;font-size:11px"></i>' + formatDate(m.createTime || m.createdAt) + '</span>' +
+        '</div>' +
+        '<div class="msg-item-content">' + (m.content || '') + '</div>' +
+    '</div>';
 }
+
+const messageListView = createListView({
+    container: '#messageList',
+    pagination: '#pagination',
+    pageSize: 10,
+    emptyHtml: emptyMsg,
+    fetch: (page) => api('/api/message/list?page=' + page + '&size=10'),
+    renderItem: messageItem
+});
+function loadMessages(page) { messageListView.load(page); }
 
 async function markRead(id) {
     await api('/api/message/read?id=' + id);
-    loadMessages(currentPage);
+    messageListView.reload();
 }
 
 async function markAllRead() {
     const data = await api('/api/message/readAll');
     if (data !== null) {
         showToast('已全部标为已读');
-        loadMessages(currentPage);
+        messageListView.reload();
     }
 }
 

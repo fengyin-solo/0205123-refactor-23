@@ -104,13 +104,14 @@
             <!-- 历史记录 -->
             <div class="fb-history">
                 <div class="section-subtitle"><i class="fas fa-history" style="color:#888"></i>我的反馈记录</div>
-                <div id="historyWrap"><div class="loading"><i class="fas fa-spinner fa-spin"></i></div></div>
+                <div id="historyWrap"></div>
             </div>
         </div>
     </div>
 </div>
 
 <script src="js/common.js"></script>
+<script src="js/list-view.js"></script>
 <script>
 requireLogin();
 renderHeader();
@@ -152,13 +153,11 @@ async function submitFb() {
     }
 }
 
-async function loadHistory() {
-    const data = await api('/api/feedback/my');
-    const wrap = document.getElementById('historyWrap');
-    if (!data || !data.length) {
-        wrap.innerHTML = '<div style="text-align:center;color:#aaa;padding:30px;font-size:13px">暂无反馈记录</div>'; return;
-    }
-    wrap.innerHTML = data.map(fb => `
+function catLabel(c) { return {BUG:'Bug报告',SUGGESTION:'功能建议',COMPLAINT:'投诉',GENERAL:'一般反馈'}[c]||c; }
+function statusLabel(s) { return {PENDING:'待处理',PROCESSING:'处理中',RESOLVED:'已解决'}[s]||s; }
+
+function feedbackItem(fb) {
+    return `
         <div class="fb-item">
             <div class="fb-item-header">
                 <div style="display:flex;align-items:center;gap:6px">
@@ -168,19 +167,24 @@ async function loadHistory() {
                 </div>
                 <span class="status-tag st-${fb.status}">${statusLabel(fb.status)}</span>
             </div>
-            <div style="font-size:12px;color:#aaa;margin-bottom:8px"><i class="fas fa-clock"></i> ${fmtDate(fb.createTime)}</div>
+            <div style="font-size:12px;color:#aaa;margin-bottom:8px"><i class="fas fa-clock"></i> ${formatDate(fb.createTime) || '--'}</div>
             <div class="fb-content">${fb.content}</div>
             ${fb.reply ? `
             <div class="fb-reply">
-                <div style="font-size:11px;color:#888;margin-bottom:4px"><i class="fas fa-headset"></i> 客服回复 · ${fmtDate(fb.replyTime)}</div>
+                <div style="font-size:11px;color:#888;margin-bottom:4px"><i class="fas fa-headset"></i> 客服回复 · ${formatDate(fb.replyTime) || '--'}</div>
                 ${fb.reply}
             </div>` : ''}
-        </div>`).join('');
+        </div>`;
 }
 
-function catLabel(c) { return {BUG:'Bug报告',SUGGESTION:'功能建议',COMPLAINT:'投诉',GENERAL:'一般反馈'}[c]||c; }
-function statusLabel(s) { return {PENDING:'待处理',PROCESSING:'处理中',RESOLVED:'已解决'}[s]||s; }
-function fmtDate(d) { if (!d) return '--'; return new Date(d).toLocaleString('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}); }
+const historyListView = createListView({
+    container: '#historyWrap',
+    emptyIcon: 'fa-bullhorn',
+    emptyText: '暂无反馈记录',
+    fetch: () => api('/api/feedback/my'),
+    renderItem: feedbackItem
+});
+function loadHistory() { historyListView.load(1); }
 function loadSidebar() {
     const u = getUser();
     if (!u) return;

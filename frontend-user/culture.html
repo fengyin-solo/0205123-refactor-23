@@ -56,9 +56,7 @@
             </div>
 
             <div>
-                <div id="cultureGrid" class="card-grid">
-                    <div class="loading"><div class="spinner"></div><p>加载中...</p></div>
-                </div>
+                <div id="cultureGrid" class="card-grid"></div>
                 <div id="pagination" class="pagination"></div>
             </div>
         </div>
@@ -68,8 +66,8 @@
 <footer class="footer"><div class="container"><p>© 2026 贵州红色文化旅游景点信息管理系统</p></div></footer>
 
 <script src="js/common.js"></script>
+<script src="js/list-view.js"></script>
 <script>
-let currentPage = 1;
 let selectedCategoryId = '';
 
 async function loadCategories() {
@@ -90,26 +88,8 @@ function selectCategory(catId, el) {
     loadCultures(1);
 }
 
-async function loadCultures(page) {
-    currentPage = page;
-    const keyword = document.getElementById('filterKeyword').value;
-
-    const grid = document.getElementById('cultureGrid');
-    grid.innerHTML = '<div class="loading"><div class="spinner"></div><p>加载中...</p></div>';
-
-    const res = await api(`/api/culture/list?page=${page}&size=9&categoryId=${encodeURIComponent(selectedCategoryId)}&keyword=${encodeURIComponent(keyword)}`);
-    if (!res) { grid.innerHTML = '<div class="empty"><i class="fas fa-book-open"></i><p>加载失败，请重试</p></div>'; return; }
-
-    const list = res.records || res.list || res;
-    const total = res.total || (Array.isArray(res) ? res.length : 0);
-
-    if (!list || list.length === 0) {
-        grid.innerHTML = '<div class="empty"><i class="fas fa-book-open"></i><p>暂无文化内容</p></div>';
-        document.getElementById('pagination').innerHTML = '';
-        return;
-    }
-
-    grid.innerHTML = list.map(c => `
+function cultureCard(c) {
+    return `
         <div class="card" onclick="location.href='culture-detail.html?id=${c.id}'">
             <div class="card-img">
                 ${c.coverImage ? `<img src="${API + c.coverImage}" alt="${c.title}" onerror="imgError(this)">` : ''}
@@ -123,10 +103,22 @@ async function loadCultures(page) {
                 </div>
             </div>
         </div>
-    `).join('');
-
-    renderPagination(document.getElementById('pagination'), currentPage, total, 9, 'loadCultures');
+    `;
 }
+
+const cultureListView = createListView({
+    container: '#cultureGrid',
+    pagination: '#pagination',
+    pageSize: 9,
+    emptyIcon: 'fa-book-open',
+    emptyText: '暂无文化内容',
+    fetch: (page) => {
+        const keyword = document.getElementById('filterKeyword').value;
+        return api(`/api/culture/list?page=${page}&size=9&categoryId=${encodeURIComponent(selectedCategoryId)}&keyword=${encodeURIComponent(keyword)}`);
+    },
+    renderItem: cultureCard
+});
+function loadCultures(page) { cultureListView.load(page); }
 
 document.getElementById('filterKeyword').addEventListener('keyup', e => { if (e.key === 'Enter') loadCultures(1); });
 
